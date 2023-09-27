@@ -11,6 +11,7 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
+#include <thread>
 #include <sstream>
 
 #include <flutter/dart_project.h>
@@ -31,28 +32,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
     return 0;
 }
-std::unique_ptr<flutter::FlutterViewController> flutter_controller2_;
-HWND CreateSubWindow(flutter::DartProject project) {
 
-
+void createSubWindow(void) {
+    flutter::DartProject project(L"data");
     std::vector<std::string> args;
     args.push_back("SubWindow");
 
     project.set_dart_entrypoint_arguments(std::move(args));
 
-    const wchar_t* className = L"MyWindowClass";
-
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, className, NULL };
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"SubWindowClass", NULL };
     RegisterClassEx(&wc);
-
-    HWND hwnd = CreateWindow(className, L"My Window", WS_OVERLAPPEDWINDOW, 100, 100, 800, 600, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = CreateWindow(L"SubWindowClass", L"Sub Window", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL);
     
     RECT frame;
+    std::unique_ptr<flutter::FlutterViewController> flutter_controller2_;
+
     GetClientRect(hwnd, &frame);
     flutter_controller2_ = std::make_unique<flutter::FlutterViewController>(
         frame.right - frame.left, frame.bottom - frame.top, project);
     if (!flutter_controller2_->engine() || !flutter_controller2_->view()) {
-        return false;
+        return;
     }
     // flutter_multi_window_plugin::FlutterMultiWindowPlugin::RegisterWithRegistrar(
     //   flutter::PluginRegistrarManager::GetInstance()
@@ -70,9 +69,13 @@ HWND CreateSubWindow(flutter::DartProject project) {
     });
 
     flutter_controller2_->ForceRedraw();
-    UpdateWindow(hwnd);
 
-    return hwnd;
+  ::MSG msg;
+  while (::GetMessage(&msg, nullptr, 0, 0)) {
+    ::TranslateMessage(&msg);
+    ::DispatchMessage(&msg);
+  }
+  return;
 }
 
 // static
@@ -101,10 +104,12 @@ void FlutterMultiWindowPlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue> &method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   if (method_call.method_name().compare("createSubWindow") == 0) {
-    flutter::DartProject project(L"data");
-    HWND hwnd = CreateSubWindow(project);
-              
-    result->Success((int64_t)hwnd);
+    std::thread subWindowThread([]() {
+        createSubWindow();
+    });
+    subWindowThread.detach();
+    
+    result->Success();
   } else {
     result->NotImplemented();
   }

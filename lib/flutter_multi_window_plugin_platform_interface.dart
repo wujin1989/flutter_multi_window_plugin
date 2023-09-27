@@ -24,7 +24,7 @@ abstract class FlutterMultiWindowPluginPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<int?> createSubWindow() {
+  Future<void> createSubWindow() {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 }

@@ -11,8 +11,7 @@ class MethodChannelFlutterMultiWindowPlugin
   final methodChannel = const MethodChannel('flutter_multi_window_plugin');
 
   @override
-  Future<int?> createSubWindow() async {
-    final version = await methodChannel.invokeMethod<int>('createSubWindow');
-    return version;
+  Future<void> createSubWindow() async {
+    await methodChannel.invokeMethod<int>('createSubWindow');
   }
 }
